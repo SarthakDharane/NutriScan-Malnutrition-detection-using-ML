@@ -1,0 +1,383 @@
+{% extends 'layouts/base.html' %}
+{% block title %}Nutrition Assessment - NutriScan{% endblock %}
+
+{% block content %}
+<style>
+  /* Import Google Font */
+  @import url('https://fonts.googleapis.com/css?family=Raleway:400,700');
+
+  /* Basic Reset and Font Styling */
+  *,
+  *:before,
+  *:after {
+    box-sizing: border-box;
+  }
+
+  body {
+    min-height: 100vh;
+    font-family: 'Raleway', sans-serif;
+    background-color: #f0f0f0;
+  }
+
+  /* Main container for the animation */
+  .dashboard-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    z-index: -1;
+  }
+
+  /* The colored panels */
+  .top:before, .top:after, .bottom:before, .bottom:after {
+    content: '';
+    display: block;
+    position: absolute;
+    width: 200vmax;
+    height: 200vmax;
+    top: 50%;
+    left: 50%;
+    margin-top: -100vmax;
+    transform-origin: 0 50%;
+    transition: all 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+    z-index: -2;
+    opacity: 0.7;
+    transition-delay: 0.2s;
+  }
+
+  /* Top panel colors and rotation */
+  .top:before { transform: rotate(45deg); background: #e46569; }
+  .top:after { transform: rotate(135deg); background: #ecaf81; }
+
+  /* Bottom panel colors and rotation */
+  .bottom:before { transform: rotate(-45deg); background: #60b8d4; }
+  .bottom:after { transform: rotate(-135deg); background: #3745b5; }
+
+  /* Animation trigger */
+  .dashboard-container:hover .top:before,
+  .dashboard-container:hover .top:after,
+  .dashboard-container:hover .bottom:before,
+  .dashboard-container:hover .bottom:after {
+    margin-left: 200px;
+    transform-origin: -200px 50%;
+    transition-delay: 0s;
+  }
+
+  /* --- Glass Card Layout --- */
+  .glass-card {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border-radius: 20px;
+    padding: 2rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+    margin-bottom: 2rem;
+    transition: all 0.3s ease;
+    position: relative;
+    z-index: 10;
+  }
+
+  .glass-card:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateY(-5px);
+    box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.4);
+  }
+
+  .glass-card h1, .glass-card h2, .glass-card h3, .glass-card h4, .glass-card h5 {
+    color: #ffffff;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    font-weight: 700;
+  }
+
+  .glass-card h6 {
+    color: #ffffff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    font-weight: 600;
+  }
+
+  .glass-card .text-muted {
+    color: rgba(255, 255, 255, 0.8) !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  }
+
+  .glass-card p {
+    color: rgba(255, 255, 255, 0.9);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    line-height: 1.6;
+  }
+
+  /* Form styling for glass theme */
+  .form-label {
+    color: rgba(255, 255, 255, 0.9);
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  }
+
+  .form-control-theme {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    color: rgba(255, 255, 255, 0.9);
+    transition: all 0.3s ease;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  }
+
+  .form-control-theme:focus {
+    outline: none;
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(96, 184, 212, 0.5);
+    box-shadow: 0 0 0 3px rgba(96, 184, 212, 0.25);
+  }
+
+  .form-control-theme::placeholder {
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  /* Responsive grid for the form layout */
+  .form-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr; /* Details | Skin Image | Nail Image */
+    gap: 2rem;
+  }
+
+  /* File upload styling for glass theme */
+  .file-upload-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  
+  .file-upload-box {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 2rem;
+    border: 2px dashed rgba(255, 255, 255, 0.3);
+    border-radius: 15px;
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+  }
+
+  .file-upload-box:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(96, 184, 212, 0.5);
+    transform: translateY(-2px);
+  }
+
+  .file-upload-text {
+    color: rgba(255, 255, 255, 0.9);
+    margin-top: 0.5rem;
+    font-weight: 600;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  }
+
+  .file-upload-icon {
+    font-size: 3rem;
+    line-height: 1;
+    color: rgba(96, 184, 212, 0.8);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  }
+
+  #skin_file_name, #nail_file_name {
+    margin-top: 1rem;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.7);
+    text-align: center;
+    word-break: break-all;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  }
+
+  /* Themed prediction button */
+  .btn-theme-predict {
+    background: linear-gradient(135deg, #60b8d4, #3745b5);
+    border: none;
+    color: #fff;
+    font-weight: 600;
+    padding: 0.75rem 2rem;
+    border-radius: 25px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(96, 184, 212, 0.3);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    margin-top: 2rem;
+    font-size: 1rem;
+  }
+
+  .btn-theme-predict:hover {
+    background: linear-gradient(135deg, #7ac4de, #4a5bc7);
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(96, 184, 212, 0.4);
+  }
+
+  /* --- Page Load Animation --- */
+  .page-container {
+    position: relative; 
+    z-index: 10; 
+    margin-top: 1rem;
+    min-height: 100vh;
+  }
+  .content-fade-in {
+    opacity: 0; 
+    animation: content-fade-in 0.8s ease-in 0.4s forwards;
+  }
+  
+  @keyframes content-fade-in {
+    from { 
+      opacity: 0; 
+      transform: translateY(30px); 
+    }
+    to { 
+      opacity: 1; 
+      transform: translateY(0); 
+    }
+  }
+
+  /* --- Responsive Stacking --- */
+  @media (max-width: 992px) {
+    .form-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<!-- Animated Background -->
+<div class="dashboard-container">
+    <div class="top"></div>
+    <div class="bottom"></div>
+</div>
+
+<div class="page-container">
+    <div class="content-fade-in">
+        <!-- Hero Section -->
+        <div class="glass-card text-center">
+            <h1 class="display-4 mb-4">🔬 Nutrition Assessment</h1>
+            <p class="lead">Upload patient details and images to get AI-powered malnutrition analysis</p>
+        </div>
+
+        <!-- Assessment Form -->
+        <div class="glass-card">
+            <h3 class="mb-4">📋 Patient Details & Images</h3>
+            <form method="post" enctype="multipart/form-data">
+                <div class="form-grid">
+                    
+                    <div class="patient-details">
+                        <h5 class="mb-3">👶 Patient Information</h5>
+                        <div class="mb-3">
+                            <label class="form-label">Child Name</label>
+                            <input class="form-control-theme" name="child_name" placeholder="Enter child's name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Age (months)</label>
+                            <input type="number" class="form-control-theme" name="age_months" min="0" placeholder="e.g., 24" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Gender</label>
+                            <select class="form-control-theme" name="gender" required>
+                                <option value="">Select Gender</option>
+                                <option value="male">Male</option>
+                                <option value="female">Female</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Height (cm)</label>
+                            <input type="number" step="0.1" class="form-control-theme" name="height_cm" placeholder="e.g., 85.5">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Weight (kg)</label>
+                            <input type="number" step="0.1" class="form-control-theme" name="weight_kg" placeholder="e.g., 12.3">
+                        </div>
+                    </div>
+
+                    <div class="file-upload-wrapper">
+                        <h5 class="mb-3">🖼️ Skin Analysis</h5>
+                        <label for="skin_image_input" class="file-upload-box">
+                            <div>
+                                <div class="file-upload-icon">🖼️</div>
+                                <div class="file-upload-text">Upload Skin Image</div>
+                                <small class="text-muted">JPG, PNG, or WebP</small>
+                            </div>
+                        </label>
+                        <input type="file" id="skin_image_input" name="skin_image" accept="image/*" hidden>
+                        <div id="skin_file_name">No file chosen</div>
+                    </div>
+
+                    <div class="file-upload-wrapper">
+                        <h5 class="mb-3">💅 Nail Analysis</h5>
+                        <label for="nail_image_input" class="file-upload-box">
+                            <div>
+                                <div class="file-upload-icon">💅</div>
+                                <div class="file-upload-text">Upload Nail Image</div>
+                                <small class="text-muted">JPG, PNG, or WebP</small>
+                            </div>
+                        </label>
+                        <input type="file" id="nail_image_input" name="nail_image" accept="image/*" hidden>
+                        <div id="nail_file_name">No file chosen</div>
+                    </div>
+                </div>
+
+                <div class="text-center">
+                    <button type="submit" class="btn btn-theme-predict">
+                        <i class="fas fa-brain"></i> Run AI Analysis
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Information Card -->
+        <div class="glass-card">
+            <h3 class="mb-4">ℹ️ How It Works</h3>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="text-center mb-3">
+                        <div class="file-upload-icon mb-2">📊</div>
+                        <h6>1. Data Collection</h6>
+                        <p class="text-muted">Enter patient details and upload clear images of skin and nail conditions.</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="text-center mb-3">
+                        <div class="file-upload-icon mb-2">🤖</div>
+                        <h6>2. AI Analysis</h6>
+                        <p class="text-muted">Our machine learning models analyze the data according to WHO standards.</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="text-center mb-3">
+                        <div class="file-upload-icon mb-2">📋</div>
+                        <h6>3. Report Generation</h6>
+                        <p class="text-muted">Get comprehensive nutrition assessment with actionable recommendations.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+  const skinInput = document.getElementById('skin_image_input');
+  const skinFileName = document.getElementById('skin_file_name');
+  const nailInput = document.getElementById('nail_image_input');
+  const nailFileName = document.getElementById('nail_file_name');
+
+  skinInput.addEventListener('change', () => {
+    skinFileName.textContent = skinInput.files.length > 0 ? skinInput.files[0].name : 'No file chosen';
+  });
+
+  nailInput.addEventListener('change', () => {
+    nailFileName.textContent = nailInput.files.length > 0 ? nailInput.files[0].name : 'No file chosen';
+  });
+</script>
+
+{% endblock %}

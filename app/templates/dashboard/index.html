@@ -1,0 +1,880 @@
+{% extends 'layouts/base.html' %}
+{% block title %}NutriScan :Malnutrition Detection using ML{% endblock %}
+
+{% block content %}
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+  /* Import Google Font */
+  @import url('https://fonts.googleapis.com/css?family=Raleway:400,700');
+
+  /* Basic Reset and Font Styling */
+  *,
+  *:before,
+  *:after {
+    box-sizing: border-box;
+  }
+
+  body {
+    min-height: 100vh;
+    font-family: 'Raleway', sans-serif;
+    background-color: #f0f0f0;
+  }
+
+  /* Main container for the animation */
+  .dashboard-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    z-index: -1;
+  }
+
+  /* The colored panels */
+  .top:before, .top:after, .bottom:before, .bottom:after {
+    content: '';
+    display: block;
+    position: absolute;
+    width: 200vmax;
+    height: 200vmax;
+    top: 50%;
+    left: 50%;
+    margin-top: -100vmax;
+    transform-origin: 0 50%;
+    transition: all 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+    z-index: -2;
+    opacity: 0.7;
+    transition-delay: 0.2s;
+  }
+
+  /* Top panel colors and rotation */
+  .top:before { transform: rotate(45deg); background: #e46569; }
+  .top:after { transform: rotate(135deg); background: #ecaf81; }
+
+  /* Bottom panel colors and rotation */
+  .bottom:before { transform: rotate(-45deg); background: #60b8d4; }
+  .bottom:after { transform: rotate(-135deg); background: #3745b5; }
+
+  /* Animation trigger */
+  .dashboard-container:hover .top:before,
+  .dashboard-container:hover .top:after,
+  .dashboard-container:hover .bottom:before,
+  .dashboard-container:hover .bottom:after {
+    margin-left: 200px;
+    transform-origin: -200px 50%;
+    transition-delay: 0s;
+  }
+
+  /* --- Themed Content Card --- */
+  .glass-card {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border-radius: 20px;
+    padding: 2rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+    margin-bottom: 2rem;
+    transition: all 0.3s ease;
+    position: relative;
+    z-index: 10;
+  }
+
+  .glass-card:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateY(-5px);
+    box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.4);
+  }
+
+  .glass-card h3, .glass-card h4, .glass-card h5 {
+    color: #ffffff;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    font-weight: 700;
+  }
+
+  .glass-card h6 {
+    color: #ffffff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    font-weight: 600;
+  }
+
+  .glass-card .text-muted {
+    color: rgba(255, 255, 255, 0.8) !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  }
+
+  .glass-card p {
+    color: rgba(255, 255, 255, 0.9);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  }
+
+  /* Themed button for dark background */
+  .btn-theme-primary {
+    background: linear-gradient(135deg, #60b8d4, #3745b5);
+    border: none;
+    color: #fff;
+    font-weight: 600;
+    padding: 0.75rem 2rem;
+    border-radius: 25px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(96, 184, 212, 0.3);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  }
+  .btn-theme-primary:hover {
+    background: linear-gradient(135deg, #7ac4de, #4a5bc7);
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(96, 184, 212, 0.4);
+  }
+
+  .btn-theme-success {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    border: none;
+    color: #fff;
+    font-weight: 600;
+    padding: 0.5rem 1.25rem;
+    border-radius: 20px;
+    transition: all 0.3s ease;
+    font-size: 0.875rem;
+    box-shadow: 0 3px 10px rgba(40, 167, 69, 0.3);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  }
+  .btn-theme-success:hover {
+    background: linear-gradient(135deg, #34ce57, #2dd4aa);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
+  }
+
+  .btn-theme-warning {
+    background: linear-gradient(135deg, #ffc107, #fd7e14);
+    border: none;
+    color: #212529;
+    font-weight: 600;
+    padding: 0.5rem 1.25rem;
+    border-radius: 20px;
+    transition: all 0.3s ease;
+    font-size: 0.875rem;
+    box-shadow: 0 3px 10px rgba(255, 193, 7, 0.3);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  }
+  .btn-theme-warning:hover {
+    background: linear-gradient(135deg, #ffca2c, #ff922b);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(255, 193, 7, 0.4);
+  }
+
+  .btn-theme-danger {
+    background: linear-gradient(135deg, #dc3545, #e74c3c);
+    border: none;
+    color: #fff;
+    font-weight: 600;
+    padding: 0.5rem 1.25rem;
+    border-radius: 20px;
+    transition: all 0.3s ease;
+    font-size: 0.875rem;
+    box-shadow: 0 3px 10px rgba(220, 53, 69, 0.3);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  }
+  .btn-theme-danger:hover {
+    background: linear-gradient(135deg, #e74c3c, #f56565);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(220, 53, 69, 0.4);
+  }
+
+  /* Status badges */
+  .status-badge {
+    padding: 0.4rem 1rem;
+    border-radius: 25px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
+  }
+  .status-badge:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+  .status-normal { 
+    background: linear-gradient(135deg, #28a745, #20c997); 
+    color: white; 
+  }
+  .status-at-risk { 
+    background: linear-gradient(135deg, #ffc107, #fd7e14); 
+    color: #212529; 
+  }
+  .status-severe { 
+    background: linear-gradient(135deg, #dc3545, #e74c3c); 
+    color: white; 
+  }
+  .status-unknown { 
+    background: linear-gradient(135deg, #6c757d, #495057); 
+    color: white; 
+  }
+  .status-no-reports { 
+    background: linear-gradient(135deg, #6c757d, #495057); 
+    color: white; 
+  }
+
+  /* Chart container */
+  .chart-container {
+    position: relative;
+    height: 300px;
+    margin: 1rem 0;
+  }
+
+  /* Patient cards */
+  .patient-card {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 15px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  }
+  .patient-card:hover {
+    background: rgba(255, 255, 255, 0.12);
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+    border-color: rgba(255, 255, 255, 0.25);
+  }
+
+  /* Tip card */
+  .tip-card {
+    background: linear-gradient(135deg, rgba(96, 184, 212, 0.15), rgba(55, 69, 181, 0.15));
+    border: 1px solid rgba(96, 184, 212, 0.3);
+    border-radius: 20px;
+    padding: 2rem;
+    margin-bottom: 1rem;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 15px rgba(96, 184, 212, 0.1);
+    transition: all 0.3s ease;
+  }
+  .tip-card:hover {
+    background: linear-gradient(135deg, rgba(96, 184, 212, 0.2), rgba(55, 69, 181, 0.2));
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(96, 184, 212, 0.2);
+  }
+
+  /* Reminder card */
+  .reminder-card {
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.15), rgba(253, 126, 20, 0.15));
+    border: 1px solid rgba(255, 193, 7, 0.4);
+    border-radius: 15px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 15px rgba(255, 193, 7, 0.1);
+    transition: all 0.3s ease;
+  }
+  .reminder-card:hover {
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.2), rgba(253, 126, 20, 0.2));
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(255, 193, 7, 0.2);
+  }
+
+  /* Stats cards */
+  .stat-card {
+    text-align: center;
+    padding: 2rem;
+    transition: all 0.3s ease;
+  }
+  .stat-card:hover {
+    transform: translateY(-5px);
+  }
+  .stat-number {
+    font-size: 3rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #60b8d4, #3745b5);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    display: block;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  .stat-label {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 600;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  }
+
+  /* --- Page Load Animation --- */
+  .page-container {
+    position: relative; 
+    z-index: 10; 
+    margin-top: 1rem;
+    min-height: 100vh;
+  }
+  .content-fade-in {
+    opacity: 0; 
+    animation: content-fade-in 0.8s ease-in 0.4s forwards;
+  }
+  
+  @keyframes content-fade-in {
+    from { 
+      opacity: 0; 
+      transform: translateY(30px); 
+    }
+    to { 
+      opacity: 1; 
+      transform: translateY(0); 
+    }
+  }
+
+  /* Alert styling */
+  .alert {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px);
+    border-radius: 15px;
+  }
+
+  /* Modal styles */
+  .modal-content {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  }
+  .modal-header {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+  }
+  .modal-footer {
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  .modal-title {
+    color: #ffffff;
+    font-weight: 700;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  }
+  .form-label {
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 600;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  }
+  .form-control {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    border-radius: 10px;
+  }
+  .form-control:focus {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: #60b8d4;
+    box-shadow: 0 0 0 0.2rem rgba(96, 184, 212, 0.25);
+    color: #ffffff;
+  }
+  .form-control::placeholder {
+    color: rgba(255, 255, 255, 0.6);
+  }
+  .btn-close {
+    filter: invert(1);
+  }
+
+  /* Patient Avatar */
+  .patient-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #60b8d4, #3745b5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 15px rgba(96, 184, 212, 0.3);
+  }
+  .avatar-text {
+    color: white;
+    font-weight: 700;
+    font-size: 1.2rem;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  }
+
+  /* Search and Filter Styling */
+  #patientSearch::placeholder {
+    color: rgba(255, 255, 255, 0.6);
+  }
+  #statusFilter option {
+    background: #2c3e50;
+    color: #ffffff;
+  }
+</style>
+
+<!-- Animated Background -->
+<div class="dashboard-container">
+    <div class="top"></div>
+    <div class="bottom"></div>
+</div>
+
+<div class="page-container">
+    <div class="content-fade-in">
+        <!-- Welcome Header -->
+        <div class="glass-card">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h3>Welcome, {{ user.username }}</h3>
+                <a class="btn btn-theme-primary" href="/predict/">New Prediction</a>
+            </div>
+            <div class="alert alert-info">Use "New Prediction" to create a new analysis. View previous analyses under "Reports".</div>
+        </div>
+
+        <!-- Statistics Overview -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="glass-card stat-card">
+                    <span class="stat-number">{{ total_patients }}</span>
+                    <span class="stat-label">Total Patients</span>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="glass-card stat-card">
+                    <span class="stat-number">{{ total_reports }}</span>
+                    <span class="stat-label">Total Reports</span>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="glass-card stat-card">
+                    <span class="stat-number">{{ patients_to_watch|length }}</span>
+                    <span class="stat-label">Patients to Watch</span>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="glass-card stat-card">
+                    <span class="stat-number">{{ upcoming_reminders|length }}</span>
+                    <span class="stat-label">Upcoming Reminders</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Left Column -->
+            <div class="col-lg-8">
+                <!-- Status Breakdown Chart -->
+                <div class="glass-card">
+                    <h4>📊 Nutrition Status Overview</h4>
+                    <div class="chart-container">
+                        <canvas id="statusChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Patients to Watch -->
+                {% if patients_to_watch %}
+                <div class="glass-card">
+                    <h4>👶 Patients to Watch</h4>
+                    <p class="text-muted">Patients with At Risk or Severe nutrition status</p>
+                    {% for item in patients_to_watch %}
+                    <div class="patient-card">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">{{ item.patient.child_name }}</h6>
+                                <small class="text-muted">
+                                    Age: {{ item.patient.age_months }} months | 
+                                    Last check: {{ item.latest_report.created_at.strftime('%Y-%m-%d') }}
+                                </small>
+                            </div>
+                            <div class="text-end">
+                                <span class="status-badge status-{{ item.latest_report.nutrition_status.lower().replace(' ', '-') }}">
+                                    {{ item.latest_report.nutrition_status }}
+                                </span>
+                                <br>
+                                <button class="btn btn-theme-warning btn-sm mt-1" 
+                                        onclick="openReminderModal({{ item.patient.id }}, {{ item.latest_report.id }})">
+                                    Set Reminder
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <!-- All Patients List -->
+                {% if all_patients %}
+                <div class="glass-card">
+                    <h4>👥 All Patients ({{ all_patients|length }})</h4>
+                    <p class="text-muted">Complete list of all registered patients with their latest status</p>
+                    
+                    <!-- Search and Filter Controls -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <input type="text" id="patientSearch" class="form-control" placeholder="🔍 Search patients by name..." 
+                                   style="background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); color: #ffffff; border-radius: 10px;">
+                        </div>
+                        <div class="col-md-6">
+                            <select id="statusFilter" class="form-control" 
+                                    style="background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); color: #ffffff; border-radius: 10px;">
+                                <option value="">All Statuses</option>
+                                <option value="Normal">Normal</option>
+                                <option value="At Risk">At Risk</option>
+                                <option value="Severe">Severe</option>
+                                <option value="No Reports">No Reports</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div id="patientsList">
+                        {% for item in all_patients %}
+                        <div class="patient-card patient-item" 
+                             data-name="{{ item.patient.child_name.lower() }}" 
+                             data-status="{{ item.latest_status }}">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="flex-grow-1">
+                                    <div class="d-flex align-items-center">
+                                        <div class="me-3">
+                                            <div class="patient-avatar">
+                                                <span class="avatar-text">{{ item.patient.child_name[0].upper() }}</span>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <h6 class="mb-1">{{ item.patient.child_name }}</h6>
+                                            <small class="text-muted">
+                                                Age: {{ item.patient.age_months }} months | 
+                                                Gender: {{ item.patient.gender }} |
+                                                BMI: {{ "%.1f"|format(item.patient.bmi) }}
+                                            </small>
+                                            {% if item.latest_report %}
+                                            <br><small class="text-muted">
+                                                Last check: {{ item.latest_report.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                            </small>
+                                            {% else %}
+                                            <br><small class="text-muted">No reports yet</small>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="text-end">
+                                    <span class="status-badge status-{{ item.latest_status.lower().replace(' ', '-') }}">
+                                        {{ item.latest_status }}
+                                    </span>
+                                    <br>
+                                    {% if item.latest_report %}
+                                    <button class="btn btn-theme-warning btn-sm mt-1" 
+                                            onclick="openReminderModal({{ item.patient.id }}, {{ item.latest_report.id }})">
+                                        Set Reminder
+                                    </button>
+                                    {% else %}
+                                    <button class="btn btn-theme-primary btn-sm mt-1" 
+                                            onclick="window.location.href='/predict/'">
+                                        Create Report
+                                    </button>
+                                    {% endif %}
+                                    <br>
+                                    <button class="btn btn-theme-danger btn-sm mt-2" 
+                                            onclick="deletePatient({{ item.patient.id }}, '{{ item.patient.child_name|e }}')">
+                                        Delete Patient
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <!-- No results message -->
+                    <div id="noResults" class="text-center py-4" style="display: none;">
+                        <p class="text-muted">No patients found matching your search criteria.</p>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Recent Reports -->
+                {% if recent_reports %}
+                <div class="glass-card">
+                    <h4>📋 Recent Reports</h4>
+                    {% for report in recent_reports %}
+                    <div class="patient-card">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">{{ report.patient.child_name }}</h6>
+                                <small class="text-muted">{{ report.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                            </div>
+                            <div class="text-end">
+                                <span class="status-badge status-{{ report.nutrition_status.lower().replace(' ', '-') }}">
+                                    {{ report.nutrition_status }}
+                                </span>
+                                <br>
+                                <button class="btn btn-theme-warning btn-sm mt-1" 
+                                        onclick="openReminderModal({{ report.patient.id }}, {{ report.id }})">
+                                    Set Reminder
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Right Column -->
+            <div class="col-lg-4">
+                <!-- Tip of the Day -->
+                <div class="glass-card tip-card">
+                    <h5>💡 Tip of the Day</h5>
+                    <p class="mb-0">{{ tip_of_day }}</p>
+                </div>
+
+                <!-- Upcoming Reminders -->
+                {% if upcoming_reminders %}
+                <div class="glass-card">
+                    <h5>⏰ Upcoming Reminders</h5>
+                    {% for reminder in upcoming_reminders %}
+                    <div class="reminder-card">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">{{ reminder.patient.child_name }}</h6>
+                                <small class="text-muted">{{ reminder.reminder_date.strftime('%Y-%m-%d %H:%M') }}</small>
+                                {% if reminder.notes %}
+                                <br><small class="text-muted">{{ reminder.notes }}</small>
+                                {% endif %}
+                            </div>
+                            <button class="btn btn-theme-success btn-sm" 
+                                    onclick="completeReminder({{ reminder.id }})">
+                                ✓ Done
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reminder Modal -->
+<div class="modal fade" id="reminderModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Set Check-up Reminder</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="reminderForm">
+                    <input type="hidden" id="reminderPatientId">
+                    <input type="hidden" id="reminderReportId">
+                    <div class="mb-3">
+                        <label for="reminderDate" class="form-label">Reminder Date & Time</label>
+                        <input type="datetime-local" class="form-control" id="reminderDate" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="reminderNotes" class="form-label">Notes (Optional)</label>
+                        <textarea class="form-control" id="reminderNotes" rows="3" placeholder="Add any notes about this reminder..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-theme-primary" onclick="createReminder()">Create Reminder</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Status Chart
+const statusData = {{ status_counts | tojson }};
+const ctx = document.getElementById('statusChart').getContext('2d');
+
+// Define colors for different statuses
+const statusColors = {
+    'Normal': '#28a745',
+    'At Risk': '#ffc107',
+    'Severe': '#dc3545',
+    'Unknown': '#6c757d'
+};
+
+const chartData = {
+    labels: Object.keys(statusData),
+    datasets: [{
+        data: Object.values(statusData),
+        backgroundColor: Object.keys(statusData).map(status => statusColors[status] || '#6c757d'),
+        borderColor: '#ffffff',
+        borderWidth: 2
+    }]
+};
+
+new Chart(ctx, {
+    type: 'doughnut',
+    data: chartData,
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: {
+                    color: '#ffffff',
+                    padding: 20
+                }
+            }
+        }
+    }
+});
+
+// Reminder functionality
+let reminderModal;
+
+document.addEventListener('DOMContentLoaded', function() {
+    reminderModal = new bootstrap.Modal(document.getElementById('reminderModal'));
+});
+
+function openReminderModal(patientId, reportId) {
+    document.getElementById('reminderPatientId').value = patientId;
+    document.getElementById('reminderReportId').value = reportId;
+    
+    // Set default date to 1 week from now
+    const nextWeek = new Date();
+    nextWeek.setDate(nextWeek.getDate() + 7);
+    document.getElementById('reminderDate').value = nextWeek.toISOString().slice(0, 16);
+    
+    reminderModal.show();
+}
+
+function createReminder() {
+    const patientId = document.getElementById('reminderPatientId').value;
+    const reportId = document.getElementById('reminderReportId').value;
+    const reminderDate = document.getElementById('reminderDate').value;
+    const notes = document.getElementById('reminderNotes').value;
+    
+    if (!reminderDate) {
+        alert('Please select a reminder date and time.');
+        return;
+    }
+    
+    fetch('/dashboard/api/create-reminder', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            patient_id: parseInt(patientId),
+            report_id: parseInt(reportId),
+            reminder_date: new Date(reminderDate).toISOString(),
+            notes: notes
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            reminderModal.hide();
+            location.reload(); // Refresh to show new reminder
+        } else {
+            alert('Error creating reminder: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error creating reminder. Please try again.');
+    });
+}
+
+function completeReminder(reminderId) {
+    if (confirm('Mark this reminder as completed?')) {
+        fetch(`/dashboard/api/complete-reminder/${reminderId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload(); // Refresh to update the list
+            } else {
+                alert('Error completing reminder: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error completing reminder. Please try again.');
+        });
+    }
+}
+
+// Patient search and filter functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('patientSearch');
+    const statusFilter = document.getElementById('statusFilter');
+    const patientItems = document.querySelectorAll('.patient-item');
+    const noResults = document.getElementById('noResults');
+    
+    function filterPatients() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const selectedStatus = statusFilter.value;
+        let visibleCount = 0;
+        
+        patientItems.forEach(item => {
+            const patientName = item.dataset.name;
+            const patientStatus = item.dataset.status;
+            
+            const matchesSearch = patientName.includes(searchTerm);
+            const matchesStatus = !selectedStatus || patientStatus === selectedStatus;
+            
+            if (matchesSearch && matchesStatus) {
+                item.style.display = 'block';
+                visibleCount++;
+            } else {
+                item.style.display = 'none';
+            }
+        });
+        
+        // Show/hide no results message
+        if (visibleCount === 0) {
+            noResults.style.display = 'block';
+        } else {
+            noResults.style.display = 'none';
+        }
+    }
+    
+    // Add event listeners
+    if (searchInput) {
+        searchInput.addEventListener('input', filterPatients);
+    }
+    if (statusFilter) {
+        statusFilter.addEventListener('change', filterPatients);
+    }
+});
+
+// Delete patient
+function deletePatient(patientId, patientName) {
+    if (!confirm(`Delete patient "${patientName}"? This will remove all reports and reminders.`)) {
+        return;
+    }
+    fetch(`/dashboard/api/delete-patient/${patientId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Remove the patient's card from the DOM without full reload
+            const card = document.querySelector(`.patient-item button[onclick^="deletePatient(${patientId},"]`)?.closest('.patient-item');
+            if (card) {
+                card.remove();
+            } else {
+                // Fallback to reload if not found
+                location.reload();
+            }
+        } else {
+            alert('Error deleting patient: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Error deleting patient. Please try again.');
+    });
+}
+</script>
+{% endblock %}

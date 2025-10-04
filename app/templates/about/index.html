@@ -1,0 +1,484 @@
+{% extends 'layouts/base.html' %}
+{% block title %}About Us - NutriScan{% endblock %}
+
+{% block content %}
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+  /* Import Google Font */
+  @import url('https://fonts.googleapis.com/css?family=Raleway:400,700');
+
+  /* Basic Reset and Font Styling */
+  *,
+  *:before,
+  *:after {
+    box-sizing: border-box;
+  }
+
+  body {
+    min-height: 100vh;
+    font-family: 'Raleway', sans-serif;
+    background-color: #f0f0f0;
+  }
+
+  /* Main container for the animation */
+  .dashboard-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    z-index: -1;
+  }
+
+  /* The colored panels */
+  .top:before, .top:after, .bottom:before, .bottom:after {
+    content: '';
+    display: block;
+    position: absolute;
+    width: 200vmax;
+    height: 200vmax;
+    top: 50%;
+    left: 50%;
+    margin-top: -100vmax;
+    transform-origin: 0 50%;
+    transition: all 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+    z-index: -2;
+    opacity: 0.7;
+    transition-delay: 0.2s;
+  }
+
+  /* Top panel colors and rotation */
+  .top:before { transform: rotate(45deg); background: #e46569; }
+  .top:after { transform: rotate(135deg); background: #ecaf81; }
+
+  /* Bottom panel colors and rotation */
+  .bottom:before { transform: rotate(-45deg); background: #60b8d4; }
+  .bottom:after { transform: rotate(-135deg); background: #3745b5; }
+
+  /* Animation trigger */
+  .dashboard-container:hover .top:before,
+  .dashboard-container:hover .top:after,
+  .dashboard-container:hover .bottom:before,
+  .dashboard-container:hover .bottom:after {
+    margin-left: 200px;
+    transform-origin: -200px 50%;
+    transition-delay: 0s;
+  }
+
+  /* --- Themed Content Card --- */
+  .glass-card {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border-radius: 20px;
+    padding: 2rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+    margin-bottom: 2rem;
+    transition: all 0.3s ease;
+    position: relative;
+    z-index: 10;
+  }
+
+  .glass-card:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateY(-5px);
+    box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.4);
+  }
+
+  .glass-card h1, .glass-card h2, .glass-card h3, .glass-card h4, .glass-card h5 {
+    color: #ffffff;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    font-weight: 700;
+  }
+
+  .glass-card h6 {
+    color: #ffffff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    font-weight: 600;
+  }
+
+  .glass-card .text-muted {
+    color: rgba(255, 255, 255, 0.8) !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  }
+
+  .glass-card p {
+    color: rgba(255, 255, 255, 0.9);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    line-height: 1.6;
+  }
+
+  .glass-card li {
+    color: rgba(255, 255, 255, 0.9);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    margin-bottom: 0.5rem;
+  }
+
+  /* Themed button for dark background */
+  .btn-theme-primary {
+    background: linear-gradient(135deg, #60b8d4, #3745b5);
+    border: none;
+    color: #fff;
+    font-weight: 600;
+    padding: 0.75rem 2rem;
+    border-radius: 25px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(96, 184, 212, 0.3);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  }
+  .btn-theme-primary:hover {
+    background: linear-gradient(135deg, #7ac4de, #4a5bc7);
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(96, 184, 212, 0.4);
+  }
+
+  /* Feature cards */
+  .feature-card {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 15px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    text-align: center;
+  }
+  .feature-card:hover {
+    background: rgba(255, 255, 255, 0.12);
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+    border-color: rgba(255, 255, 255, 0.25);
+  }
+
+  .feature-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    display: block;
+  }
+
+  /* Team member cards */
+  .team-card {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 15px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    text-align: center;
+  }
+  .team-card:hover {
+    background: rgba(255, 255, 255, 0.12);
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+    border-color: rgba(255, 255, 255, 0.25);
+  }
+
+  .team-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #60b8d4, #3745b5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1rem;
+    box-shadow: 0 4px 15px rgba(96, 184, 212, 0.3);
+  }
+  .avatar-text {
+    color: white;
+    font-weight: 700;
+    font-size: 2rem;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  }
+
+  /* Stats cards */
+  .stat-card {
+    text-align: center;
+    padding: 2rem;
+    transition: all 0.3s ease;
+  }
+  .stat-card:hover {
+    transform: translateY(-5px);
+  }
+  .stat-number {
+    font-size: 3rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #60b8d4, #3745b5);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    display: block;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  .stat-label {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 600;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  }
+
+  /* --- Page Load Animation --- */
+  .page-container {
+    position: relative; 
+    z-index: 10; 
+    margin-top: 1rem;
+    min-height: 100vh;
+  }
+  .content-fade-in {
+    opacity: 0; 
+    animation: content-fade-in 0.8s ease-in 0.4s forwards;
+  }
+  
+  @keyframes content-fade-in {
+    from { 
+      opacity: 0; 
+      transform: translateY(30px); 
+    }
+    to { 
+      opacity: 1; 
+      transform: translateY(0); 
+    }
+  }
+
+  /* Technology stack icons */
+  .tech-icon {
+    font-size: 2rem;
+    margin: 0.5rem;
+    opacity: 0.8;
+    transition: all 0.3s ease;
+  }
+  .tech-icon:hover {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+
+  /* Mission statement highlight */
+  .mission-highlight {
+    background: linear-gradient(135deg, rgba(96, 184, 212, 0.15), rgba(55, 69, 181, 0.15));
+    border: 1px solid rgba(96, 184, 212, 0.3);
+    border-radius: 20px;
+    padding: 2rem;
+    margin: 2rem 0;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 15px rgba(96, 184, 212, 0.1);
+  }
+</style>
+
+<!-- Animated Background -->
+<div class="dashboard-container">
+    <div class="top"></div>
+    <div class="bottom"></div>
+</div>
+
+<div class="page-container">
+    <div class="content-fade-in">
+        <!-- Hero Section -->
+        <div class="glass-card text-center">
+            <h1 class="display-4 mb-4">About NutriScan</h1>
+            <p class="lead">Revolutionizing Child Nutrition Assessment Through AI-Powered Medical Technology</p>
+            <div class="mission-highlight">
+                <h3>🎯 Our Mission</h3>
+                <p class="mb-0">To bridge the gap between medical expertise and machine learning, providing healthcare professionals with advanced tools for early malnutrition detection and intervention in children.</p>
+            </div>
+        </div>
+
+        <!-- Statistics Overview -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="glass-card stat-card">
+                    <span class="stat-number">AI/ML</span>
+                    <span class="stat-label">Powered Detection</span>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="glass-card stat-card">
+                    <span class="stat-number">WHO</span>
+                    <span class="stat-label">Standards Compliant</span>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="glass-card stat-card">
+                    <span class="stat-number">24/7</span>
+                    <span class="stat-label">Available</span>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="glass-card stat-card">
+                    <span class="stat-number">100%</span>
+                    <span class="stat-label">Secure & Private</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Left Column -->
+            <div class="col-lg-8">
+                <!-- What is NutriScan -->
+                <div class="glass-card">
+                    <h2>🔬 What is NutriScan?</h2>
+                    <p>NutriScan is an innovative web-based application that combines the power of machine learning with medical expertise to provide comprehensive malnutrition assessment for children. Our platform analyzes multiple indicators including BMI, skin condition, and nail health to deliver accurate nutrition status predictions.</p>
+                    
+                    <h4>Key Features:</h4>
+                    <ul>
+                        <li><strong>Multi-Modal Analysis:</strong> Combines anthropometric measurements with visual assessment of skin and nail conditions</li>
+                        <li><strong>WHO Standards Integration:</strong> All assessments are based on World Health Organization growth standards</li>
+                        <li><strong>AI-Powered Predictions:</strong> Advanced machine learning models trained on medical datasets</li>
+                        <li><strong>Comprehensive Reporting:</strong> Detailed reports with actionable recommendations</li>
+                        <li><strong>Patient Management:</strong> Complete patient tracking and reminder system</li>
+                        <li><strong>Analytics Dashboard:</strong> Population-level insights and trends</li>
+                    </ul>
+                </div>
+
+                <!-- How It Works -->
+                <div class="glass-card">
+                    <h2>⚙️ How NutriScan Works</h2>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="feature-card">
+                                <span class="feature-icon">📊</span>
+                                <h5>Data Collection</h5>
+                                <p>Healthcare professionals input patient demographics, measurements, and upload images of skin and nail conditions.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="feature-card">
+                                <span class="feature-icon">🤖</span>
+                                <h5>AI Analysis</h5>
+                                <p>Our machine learning models analyze the data and images to assess nutritional status according to WHO standards.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="feature-card">
+                                <span class="feature-icon">📋</span>
+                                <h5>Report Generation</h5>
+                                <p>Comprehensive reports are generated with nutrition status, risk factors, and recommended interventions.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="feature-card">
+                                <span class="feature-icon">👨‍⚕️</span>
+                                <h5>Clinical Decision Support</h5>
+                                <p>Healthcare providers receive actionable insights to guide treatment and follow-up care decisions.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Technology Stack -->
+                <div class="glass-card">
+                    <h2>💻 Technology Stack</h2>
+                    <p>NutriScan is built using cutting-edge technologies to ensure reliability, security, and performance:</p>
+                    
+                    <div class="row">
+                        <div class="col-md-4">
+                            <h5>Backend Technologies</h5>
+                            <ul>
+                                <li>Python Flask Framework</li>
+                                <li>SOLite</li>
+                                <li>TensorFlow/PyTorch</li>
+                                <li>OpenCV for Image Processing</li>
+                                <li>WHO Growth Standards API</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-4">
+                            <h5>Frontend Technologies</h5>
+                            <ul>
+                                <li>HTML5 & CSS3</li>
+                                <li>Bootstrap 5</li>
+                                <li>JavaScript ES6+</li>
+                                <li>Chart.js for Analytics</li>
+                                <li>Responsive Design</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-4">
+                            <h5>AI/ML Components</h5>
+                            <ul>
+                                <li>Computer Vision Models</li>
+                                <li>Deep Learning Networks</li>
+                                <li>Image Classification</li>
+                                <li>Predictive Analytics</li>
+                                <li>Natural Language Processing</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column -->
+            <div class="col-lg-4">
+                <!-- Our Team -->
+                <div class="glass-card">
+                    <h3>👥 Our Team</h3>
+                    <p class="text-muted">Combining medical expertise with AI innovation</p>
+                    
+                    <div class="team-card">
+                        <div class="team-avatar">
+                            <span class="avatar-text">👨‍⚕️</span>
+                        </div>
+                        <h5>Medical Advisory Board</h5>
+                        <p class="text-muted">Pediatric nutritionists and healthcare professionals ensuring clinical accuracy and WHO compliance.</p>
+                    </div>
+                    
+                    <div class="team-card">
+                        <div class="team-avatar">
+                            <span class="avatar-text">🤖</span>
+                        </div>
+                        <h5>AI/ML Engineers</h5>
+                        <p class="text-muted">Machine learning specialists developing and optimizing our predictive models for maximum accuracy.</p>
+                    </div>
+                    
+                    <div class="team-card">
+                        <div class="team-avatar">
+                            <span class="avatar-text">💻</span>
+                        </div>
+                        <h5>Software Developers</h5>
+                        <p class="text-muted">Full-stack developers creating intuitive interfaces and robust backend systems.</p>
+                    </div>
+                </div>
+
+                <!-- Key Benefits -->
+                <div class="glass-card">
+                    <h3>✨ Key Benefits</h3>
+                    <ul>
+                        <li><strong>Early Detection:</strong> Identify malnutrition risks before they become severe</li>
+                        <li><strong>Standardized Assessment:</strong> Consistent evaluation using WHO guidelines</li>
+                        <li><strong>Time Efficiency:</strong> Rapid analysis and reporting</li>
+                        <li><strong>Data-Driven Insights:</strong> Population-level analytics for public health planning</li>
+                        <li><strong>Remote Capability:</strong> Accessible from anywhere with internet connection</li>
+                        <li><strong>Cost-Effective:</strong> Reduces need for expensive laboratory tests</li>
+                    </ul>
+                </div>
+
+                <!-- Contact Information -->
+                <div class="glass-card">
+                    <h3>📞 Contact Us</h3>
+                    <p>For questions, support, or collaboration opportunities:</p>
+                    <ul>
+                        <li><strong>Email:</strong> support@nutriscan.ai</li>
+                        <li><strong>Medical Inquiries:</strong> medical@nutriscan.ai</li>
+                        <li><strong>Technical Support:</strong> tech@nutriscan.ai</li>
+                        <li><strong>Partnership:</strong> partners@nutriscan.ai</li>
+                    </ul>
+                    <a href="/dashboard/" class="btn btn-theme-primary w-100 mt-3">Get Started</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer Section -->
+        <div class="glass-card text-center">
+            <h3>🌍 Making a Global Impact</h3>
+            <p>NutriScan is committed to improving child health outcomes worldwide by providing healthcare professionals with the tools they need to detect and address malnutrition early. Our platform supports the United Nations Sustainable Development Goal 2: Zero Hunger, by enabling better nutrition assessment and intervention strategies.</p>
+            <p class="text-muted">Built with ❤️ for healthcare professionals and the children they serve.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

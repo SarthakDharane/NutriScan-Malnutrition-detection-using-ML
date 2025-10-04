@@ -1,0 +1,168 @@
+{% extends 'layouts/base.html' %}
+{% block title %}Login{% endblock %}
+
+{% block content %}
+<style>
+  /* Import Google Font */
+  @import url('https://fonts.googleapis.com/css?family=Raleway:400,700');
+
+  /* Basic Reset and Font Styling */
+  *,
+  *:before,
+  *:after {
+    box-sizing: border-box;
+  }
+
+  body {
+    min-height: 100vh;
+    font-family: 'Raleway', sans-serif;
+    /* This background is a fallback for the animation */
+    background-color: #f0f0f0; 
+  }
+
+  /* Main container for the animation */
+.login-container { /* or .register-container */
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+  /* The colored panels */
+  .top:before, .top:after, .bottom:before, .bottom:after {
+    content: '';
+    display: block;
+    position: absolute;
+    width: 200vmax;
+    height: 200vmax;
+    top: 50%;
+    left: 50%;
+    margin-top: -100vmax;
+    transform-origin: 0 50%;
+    transition: all 0.5s cubic-bezier(0.445, 0.05, 0, 1);
+    z-index: 10;
+    opacity: 0.65;
+    transition-delay: 0.2s;
+  }
+
+  /* Top panel colors and rotation */
+  .top:before { transform: rotate(45deg); background: #e46569; }
+  .top:after { transform: rotate(135deg); background: #ecaf81; }
+
+  /* Bottom panel colors and rotation */
+  .bottom:before { transform: rotate(-45deg); background: #60b8d4; }
+  .bottom:after { transform: rotate(-135deg); background: #3745b5; }
+
+  /* Animation trigger */
+  .login-container:hover .top:before,
+  .login-container:hover .top:after,
+  .login-container:hover .bottom:before,
+  .login-container:hover .bottom:after,
+  .login-container:active .top:before,
+  .login-container:active .top:after,
+  .login-container:active .bottom:before,
+  .login-container:active .bottom:after {
+    margin-left: 200px;
+    transform-origin: -200px 50%;
+    transition-delay: 0s;
+  }
+  
+  /* Centered Login Form */
+  .center {
+    position: absolute;
+    width: 400px;
+    height: auto;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%); /* <-- The centering fix */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 30px;
+    opacity: 0;
+    transition: all 0.5s cubic-bezier(0.445, 0.05, 0, 1);
+    transition-delay: 0s;
+    color: #333;
+    z-index: 20;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  }
+
+  /* Form fade-in on hover/active */
+  .login-container:hover .center,
+  .login-container:active .center {
+    opacity: 1;
+    transition-delay: 0.2s;
+  }
+
+  .center h2 {
+    margin-bottom: 15px;
+  }
+
+  /* Styling for the form inputs */
+  .center input {
+    width: 100%;
+    padding: 15px;
+    margin: 5px 0;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    font-family: inherit;
+    font-size: 16px;
+  }
+  
+  /* Styling for the login button */
+  .center button {
+    width: 100%;
+    padding: 15px;
+    margin-top: 15px;
+    border-radius: 4px;
+    border: none;
+    background: #3745b5;
+    color: white;
+    font-family: inherit;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.3s ease;
+  }
+
+  .center button:hover {
+    background: #60b8d4;
+  }
+  
+  /* Styling for the "No account?" link */
+  .center p {
+      margin-top: 20px;
+      font-size: 14px;
+  }
+
+  .center p a {
+      color: #e46569;
+      text-decoration: none;
+      font-weight: bold;
+  }
+</style>
+
+<div class="login-container">
+  <div class="top"></div>
+  <div class="bottom"></div>
+  <div class="center">
+    <h2>Please Sign In</h2>
+    
+    <form method="post" style="width: 100%;">
+      
+      <input type="text" placeholder="Username" name="username" required>
+      
+      <input type="password" placeholder="Password" name="password" required>
+      
+      <button type="submit">Login</button>
+      
+      <p>No account? <a href="{{ url_for('auth.register') }}">Register</a></p>
+    </form>
+  </div>
+</div>
+{% endblock %}

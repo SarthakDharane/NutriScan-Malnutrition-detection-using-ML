@@ -1,0 +1,1790 @@
+{% extends 'layouts/base.html' %}
+{% block title %}NutriScan Report{% endblock %}
+
+{% block extra_css %}
+<style>
+.risk-indicator {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: white;
+    font-size: 14px;
+}
+
+.risk-low { background: linear-gradient(135deg, #28a745, #20c997); }
+.risk-medium { background: linear-gradient(135deg, #ffc107, #fd7e14); }
+.risk-high { background: linear-gradient(135deg, #fd7e14, #dc3545); }
+.risk-critical { background: linear-gradient(135deg, #dc3545, #6f42c1); }
+
+.severity-badge {
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.severity-normal { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+.severity-mild { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+.severity-moderate { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+.severity-severe { background: #721c24; color: white; border: 1px solid #721c24; }
+
+.confidence-meter {
+    width: 100%;
+    height: 8px;
+    background: #e9ecef;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.confidence-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #dc3545, #ffc107, #28a745);
+    transition: width 0.3s ease;
+}
+
+.chatbot-container {
+    background: #f8f9fa;
+    border-radius: 15px;
+    border: 1px solid #dee2e6;
+    height: 500px;
+    display: flex;
+    flex-direction: column;
+}
+
+.chatbot-header {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    color: white;
+    padding: 1rem;
+    border-radius: 15px 15px 0 0;
+    text-align: center;
+}
+
+.chatbot-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.message {
+    max-width: 80%;
+    padding: 0.75rem 1rem;
+    border-radius: 15px;
+    word-wrap: break-word;
+    display: flex;
+    gap: 0.5rem;
+}
+
+.message .avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    color: #fff;
+}
+
+.message.user {
+    background: #007bff;
+    color: white;
+    align-self: flex-end;
+    border-bottom-right-radius: 5px;
+}
+
+.message.bot {
+    background: white;
+    color: #333;
+    align-self: flex-start;
+    border: 1px solid #dee2e6;
+    border-bottom-left-radius: 5px;
+}
+
+.message .content { flex: 1; }
+.message .meta { font-size: 11px; color: #6c757d; margin-top: 4px; }
+
+.typing {
+    align-self: flex-start;
+    background: #ffffff;
+    border: 1px solid #dee2e6;
+    padding: 0.5rem 0.75rem;
+    border-radius: 12px;
+    display: inline-flex;
+    gap: 6px;
+}
+.typing span { width: 6px; height: 6px; background: #adb5bd; border-radius: 50%; animation: blink 1.2s infinite; }
+.typing span:nth-child(2){ animation-delay: .2s; }
+.typing span:nth-child(3){ animation-delay: .4s; }
+@keyframes blink { 0%, 80%, 100% { opacity: .2 } 40% { opacity: 1 } }
+
+.quick-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem; /* Add a little space below the buttons */
+}
+
+.quick-action-btn {
+    background: #e9ecef;
+    border: 1px solid #dee2e6; /* Add a clear border */
+    padding: 0.5rem 1rem;
+    border-radius: 20px; /* This makes it a pill shape */
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #495057;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex; /* Align icon and text */
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.quick-action-btn:hover {
+    background: #007bff;
+    color: white;
+    border-color: #007bff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.quick-action-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.quick-action-btn.active { transform: translateY(1px); box-shadow: inset 0 2px 6px rgba(0,0,0,.15); }
+.quick-action-btn .ripple-circle { position: absolute; border-radius: 50%; transform: scale(0); animation: ripple .6s linear; background: rgba(255,255,255,.6); }
+@keyframes ripple { to { transform: scale(4); opacity: 0; } }
+
+.chatbot-input {
+    padding: 1rem;
+    border-top: 1px solid #dee2e6;
+    background: white;
+    border-radius: 0 0 15px 15px;
+}
+
+.chatbot-input input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #dee2e6;
+    border-radius: 25px;
+    outline: none;
+}
+
+.chatbot-input input:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.who-chart-container {
+    background: white;
+    border-radius: 10px;
+    padding: 1.5rem;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.recommendations-card {
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    border: none;
+    border-radius: 15px;
+}
+
+.recommendations-card .card-header {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    color: white;
+    border-radius: 15px 15px 0 0;
+    border: none;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2 class="mb-0">
+                    <i class="fas fa-chart-line text-primary"></i>
+                    NutriScan Report
+                </h2>
+                <div class="d-flex gap-2">
+                    <a href="{{ url_for('predict.export_pdf', report_id=report.id) }}" class="btn btn-success">
+                        <i class="fas fa-file-pdf"></i> Export PDF
+                    </a>
+                    <a href="/reports/" class="btn btn-outline-primary">
+                        <i class="fas fa-list"></i> View Reports
+                    </a>
+                    <a href="/predict/" class="btn btn-secondary">
+                        <i class="fas fa-plus"></i> New Analysis
+                    </a>
+                </div>
+            </div>
+            <p class="text-muted">Comprehensive malnutrition analysis with WHO standards and AI-powered insights</p>
+        </div>
+    </div>
+
+    <!-- Risk Assessment Overview -->
+    <div class="row mb-4">
+        <div class="col-12 col-lg-8">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-exclamation-triangle text-warning"></i>
+                        Malnutrition Risk Assessment
+                    </h5>
+                    <div class="row g-3">
+                        <div class="col-6 col-md-3">
+                            <div class="text-center">
+                                <div class="risk-indicator risk-{{ report.risk_level.lower() if report.risk_level else 'low' }}">
+                                    {{ report.risk_level[0] if report.risk_level else 'L' }}
+                                </div>
+                                <div class="mt-2">
+                                    <div class="fw-bold">{{ report.risk_level or 'Low' }}</div>
+                                    <div class="small text-muted">Risk Level</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="text-center">
+                                <div class="h3 text-primary">{{ report.malnutrition_risk_score or 0 }}/100</div>
+                                <div class="small text-muted">Risk Score</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="text-center">
+                                <div class="h3 text-info">{{ "%.1f"|format(report.bmi_percentile or 50) }}%</div>
+                                <div class="small text-muted">WHO Percentile</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="text-center">
+                                <div class="h3 text-secondary">{{ "%.2f"|format(report.bmi_z_score or 0) }}</div>
+                                <div class="small text-muted">Z-Score</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-lg-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Overall Status</h5>
+                    <div class="h2 mb-2">
+                        {% if report.nutrition_status == 'Normal' %}
+                            <span class="badge bg-success fs-1">✅ Normal</span>
+                        {% elif report.nutrition_status == 'At Risk' %}
+                            <span class="badge bg-warning fs-1">⚠️ At Risk</span>
+                        {% elif report.nutrition_status == 'Moderate' %}
+                            <span class="badge bg-warning fs-1">🟡 Moderate</span>
+                        {% elif report.nutrition_status == 'Severe' %}
+                            <span class="badge bg-danger fs-1">🔴 Severe</span>
+                        {% else %}
+                            <span class="badge bg-secondary fs-1">❓ Unknown</span>
+                        {% endif %}
+                    </div>
+                    <p class="text-muted small">
+                        Based on comprehensive analysis of BMI, skin, and nail health
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detailed Analysis -->
+    <div class="row mb-4">
+        <div class="col-12 col-lg-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-user text-primary"></i>
+                        Patient Information
+                    </h5>
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <div class="small text-muted">Name</div>
+                            <div class="fw-semibold">{{ patient.child_name }}</div>
+                        </div>
+                        <div class="col-6">
+                            <div class="small text-muted">Gender</div>
+                            <div class="fw-semibold">{{ patient.gender|title }}</div>
+                        </div>
+                        <div class="col-6">
+                            <div class="small text-muted">Age</div>
+                            <div class="fw-semibold">{{ "%.1f"|format(patient.age_months / 12) }} years ({{ patient.age_months }} months)</div>
+                        </div>
+                        <div class="col-6">
+                            <div class="small text-muted">Height / Weight</div>
+                            <div class="fw-semibold">{{ "%.1f"|format(patient.height_cm) }} cm · {{ "%.1f"|format(patient.weight_kg) }} kg</div>
+                        </div>
+                        <div class="col-12">
+                            <div class="small text-muted">BMI</div>
+                            <div class="fw-semibold h4">
+                                {{ "%.2f"|format(patient.bmi) }}
+                                <span class="badge {{ 'bg-success' if report.bmi_category == 'Normal' else ('bg-warning' if report.bmi_category in ['Underweight', 'Overweight'] else 'bg-danger') }}">
+                                    {{ report.bmi_category or 'Unknown' }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-lg-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-microscope text-primary"></i>
+                        Image Analysis Results
+                    </h5>
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <div class="text-center">
+                                <div class="mb-2">
+                                    <span class="severity-badge severity-{{ report.skin_severity.lower() if report.skin_severity else 'normal' }}">
+                                        {{ report.skin_severity or 'Normal' }}
+                                    </span>
+                                </div>
+                                <div class="small text-muted">Skin Health</div>
+                                <div class="fw-semibold">{{ report.skin_pred|replace('_', ' ')|title }}</div>
+                                <div class="mt-2">
+                                    <div class="confidence-meter">
+                                        <div class="confidence-fill" style="width: {{ (report.skin_confidence or 0.5) * 100 }}%"></div>
+                                    </div>
+                                    <div class="small text-muted mt-1">{{ "%.1f"|format((report.skin_confidence or 0.5) * 100) }}% confidence</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-center">
+                                <div class="mb-2">
+                                    <span class="severity-badge severity-{{ report.nail_severity.lower() if report.nail_severity else 'normal' }}">
+                                        {{ report.nail_severity or 'Normal' }}
+                                    </span>
+                                </div>
+                                <div class="small text-muted">Nail Health</div>
+                                <div class="fw-semibold">{{ report.nail_pred|replace('_', ' ')|title }}</div>
+                                <div class="mt-2">
+                                    <div class="confidence-meter">
+                                        <div class="confidence-fill" style="width: {{ (report.nail_confidence or 0.5) * 100 }}%"></div>
+                                    </div>
+                                    <div class="small text-muted mt-1">{{ "%.1f"|format((report.nail_confidence or 0.5) * 100) }}% confidence</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- WHO Standards Chart -->
+    <div class="row mb-4">
+        <div class="col-12">
+                            <div class="who-chart-container">
+                                <h5 class="mb-3">
+                                    <i class="fas fa-chart-line text-primary"></i>
+                                    BMI-for-Age Growth Chart (WHO Standards)
+                                </h5>
+                                {% if plot_url %}
+                                <div class="text-center">
+                                    <img class="img-fluid" src="{{ plot_url }}" alt="WHO BMI-for-age chart" style="max-width: 100%; height: auto;">
+                                </div>
+                                <div class="mt-3">
+                                    <div class="row text-center">
+                                        <div class="col-md-3">
+                                            <div class="small text-muted">Your Child's BMI</div>
+                                            <div class="fw-bold text-primary">{{ "%.1f"|format(patient.bmi) }}</div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="small text-muted">WHO Percentile</div>
+                                            <div class="fw-bold text-info">{{ "%.1f"|format(report.bmi_percentile or 50) }}%</div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="small text-muted">Z-Score</div>
+                                            <div class="fw-bold text-secondary">{{ "%.2f"|format(report.bmi_z_score or 0) }}</div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="small text-muted">Category</div>
+                                            <div class="fw-bold">{{ report.bmi_category or 'Unknown' }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% else %}
+                                <div class="text-center text-muted">
+                                    <i class="fas fa-chart-line fa-3x mb-3"></i>
+                                    <p>Chart not available</p>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+    <!-- Recommendations -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card recommendations-card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-lightbulb"></i>
+                        Personalized Recommendations
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-12 col-md-4">
+                            <div class="card h-100 border-0 bg-light">
+                                <div class="card-body">
+                                    <h6 class="card-title text-primary">
+                                        <i class="fas fa-apple-alt"></i> Dietary
+                                    </h6>
+                                    <p class="card-text small">
+                                        {{ report.dietary_recommendations or 'No specific dietary recommendations available.' }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <div class="card h-100 border-0 bg-light">
+                                <div class="card-body">
+                                    <h6 class="card-title text-success">
+                                        <i class="fas fa-running"></i> Lifestyle
+                                    </h6>
+                                    <p class="card-text small">
+                                        {{ report.lifestyle_recommendations or 'No specific lifestyle recommendations available.' }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <div class="card h-100 border-0 bg-light">
+                                <div class="card-body">
+                                    <h6 class="card-title text-info">
+                                        <i class="fas fa-tint"></i> Hydration
+                                    </h6>
+                                    <p class="card-text small">
+                                        {{ report.hydration_tips or 'No specific hydration tips available.' }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {% if report.professional_consultation %}
+                    <div class="alert alert-warning mt-3 mb-0">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>Professional Consultation Recommended:</strong>
+                        Based on the assessment, consulting a healthcare professional is advised.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chatbot Assistant -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-robot text-primary"></i>
+                        AI Nutrition Assistant
+                    </h5>
+                    <p class="text-muted">Ask questions about the report, get explanations, and receive personalized guidance.</p>
+                    
+                    <div class="chatbot-container">
+                        <div class="chatbot-header">
+                            <h6 class="mb-0">
+                                <i class="fas fa-comments"></i>
+                                NutriScan Assistant
+                            </h6>
+                        </div>
+                        
+                        <div class="chatbot-messages" id="chatbotMessages">
+                            <div class="message bot">
+                                👋 Hello! I'm your NutriScan Assistant. I can help explain your child's nutrition report and provide personalized recommendations. What would you like to know about?
+                            </div>
+                        </div>
+                        
+                        <div class="chatbot-input">
+                            <div class="quick-actions mb-2" id="quickActions">
+                                <button class="quick-action-btn" onclick="sendQuickAction(this, event)">📄 Explain Report</button>
+                               <button class="quick-action-btn" onclick="sendQuickAction(this, event)">📈 BMI Details</button>
+                               <button class="quick-action-btn" onclick="sendQuickAction(this, event)">⚠️ Risk Assessment</button>
+                               <button class="quick-action-btn" onclick="sendQuickAction(this, event)">💡 Recommendations</button>
+                               <button class="quick-action-btn" onclick="sendQuickAction(this, event)">👨‍⚕️ When to See Doctor</button>
+                            </div>
+                            <div class="input-group">
+                                <input type="text" id="chatbotInput" class="form-control" placeholder="Ask me anything about the nutrition report..." onkeypress="handleChatbotKeypress(event)">
+                                <button class="btn btn-primary" onclick="sendChatbotMessage()">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Images Section -->
+    <div class="row mb-4">
+        <div class="col-12 col-lg-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-image text-primary"></i>
+                        Skin Image Analysis
+                    </h5>
+                    {% if report.skin_image_path %}
+                    <img class="img-fluid rounded" src="{{ url_for('static', filename='uploads/' + report.skin_image_path) }}" alt="Skin image">
+                    {% else %}
+                    <div class="text-muted text-center py-4">
+                        <i class="fas fa-image fa-3x mb-3"></i>
+                        <p>No skin image available</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-lg-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-image text-primary"></i>
+                        Nail Image Analysis
+                    </h5>
+                    {% if report.nail_image_path %}
+                    <img class="img-fluid rounded" src="{{ url_for('static', filename='uploads/' + report.nail_image_path) }}" alt="Nail image">
+                    {% else %}
+                    <div class="text-muted text-center py-4">
+                        <i class="fas fa-image fa-3x mb-3"></i>
+                        <p>No nail image available</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Digital Skin & Nail Health Analysis Report (Augmented Sheet) -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h4 class="mb-3">
+                        <i class="fas fa-file-medical-alt text-primary"></i>
+                        Digital Skin & Nail Health Analysis Report
+                    </h4>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-3">
+                            <div class="small text-muted">Patient Name</div>
+                            <div class="fw-bold">{{ patient.child_name }}</div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="small text-muted">Age</div>
+                            <div class="fw-bold">{{ '%.1f'|format(patient.age_months/12) }} years</div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="small text-muted">Gender</div>
+                            <div class="fw-bold">{{ patient.gender|title }}</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="small text-muted">Date of Report</div>
+                            <div class="fw-bold">{{ report.created_at.strftime('%Y-%m-%d') if report.created_at else '' }}</div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="small text-muted">Report ID</div>
+                            <div class="fw-bold">SKN-{{ '%04d' % patient.id }}-{{ '%04d' % report.id }}</div>
+                        </div>
+                    </div>
+
+                    <!-- Image Summary -->
+                    <h6 class="mt-3">Image Summary</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Area</th>
+                                    <th>Image</th>
+                                    <th>Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Skin</td>
+                                    <td>
+                                        {% if report.skin_image_path %}
+                                        <img src="{{ url_for('static', filename='uploads/' + report.skin_image_path) }}" alt="Skin" style="height:60px" class="rounded border">
+                                        {% else %}<span class="text-muted">No image</span>{% endif %}
+                                    </td>
+                                    <td>{{ report.skin_pred|replace('_',' ')|title }} ({{ report.skin_severity or 'Normal' }})</td>
+                                </tr>
+                                <tr>
+                                    <td>Nail</td>
+                                    <td>
+                                        {% if report.nail_image_path %}
+                                        <img src="{{ url_for('static', filename='uploads/' + report.nail_image_path) }}" alt="Nail" style="height:60px" class="rounded border">
+                                        {% else %}<span class="text-muted">No image</span>{% endif %}
+                                    </td>
+                                    <td>{{ report.nail_pred|replace('_',' ')|title }} ({{ report.nail_severity or 'Normal' }})</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+
+                    <!-- Findings & Interpretation -->
+                    <h6 class="mt-3">Findings & Interpretation</h6>
+                    {% set skin_unhealthy = 'unhealthy' in (report.skin_pred or '') %}
+                    {% set nail_unhealthy = 'unhealthy' in (report.nail_pred or '') %}
+                    {% set skin_conf = (report.skin_confidence or 0.5) * 100 %}
+                    {% set nail_conf = (report.nail_confidence or 0.5) * 100 %}
+                    {% set skin_sev = (report.skin_severity or 'Normal') %}
+                    {% set nail_sev = (report.nail_severity or 'Normal') %}
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="p-3 bg-light rounded h-100">
+                                <div class="d-flex align-items-center gap-2 mb-2">
+                                    <span class="badge {{ 'bg-danger' if skin_unhealthy else 'bg-success' }}">Skin: {{ report.skin_pred|replace('_',' ')|title }}</span>
+                                    <span class="badge bg-secondary">{{ '%.1f'|format(skin_conf) }}% conf.</span>
+                                    <span class="badge {{ 'bg-danger' if skin_sev=='Severe' else ('bg-warning' if skin_sev in ['Moderate','Mild'] else 'bg-success') }}">{{ skin_sev }}</span>
+                                </div>
+                                <ul class="mb-0 small">
+                                    {% if skin_unhealthy %}
+                                        <li>Texture or color patterns suggest potential nutritional or dermatologic concern.</li>
+                                        <li>Consider hydration optimization and review for micronutrient gaps (vitamin A/E, zinc).</li>
+                                        <li>If persistent for &gt;2 weeks or symptomatic (itching, pain), seek clinician review.</li>
+                                    {% else %}
+                                        <li>No suspicious lesions or dyschromia detected by the model.</li>
+                                        <li>Maintain sun protection and routine moisturization.</li>
+                                    {% endif %}
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="p-3 bg-light rounded h-100">
+                                <div class="d-flex align-items-center gap-2 mb-2">
+                                    <span class="badge {{ 'bg-danger' if nail_unhealthy else 'bg-success' }}">Nails: {{ report.nail_pred|replace('_',' ')|title }}</span>
+                                    <span class="badge bg-secondary">{{ '%.1f'|format(nail_conf) }}% conf.</span>
+                                    <span class="badge {{ 'bg-danger' if nail_sev=='Severe' else ('bg-warning' if nail_sev in ['Moderate','Mild'] else 'bg-success') }}">{{ nail_sev }}</span>
+                                </div>
+                                <ul class="mb-0 small">
+                                    {% if nail_unhealthy %}
+                                        <li>Surface features may reflect iron/protein deficiency or mechanical trauma.</li>
+                                        <li>Check for brittleness, discoloration, or periungual swelling over the next weeks.</li>
+                                        <li>Discuss diet rich in iron, protein, biotin; seek care if changes progress.</li>
+                                    {% else %}
+                                        <li>Color and attachment appear within expected range.</li>
+                                        <li>Maintain trimming hygiene; avoid prolonged moisture exposure.</li>
+                                    {% endif %}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if skin_unhealthy and nail_unhealthy %}
+                        <div class="alert alert-warning mt-3 mb-0">Combined skin and nail findings increase the likelihood of nutritional imbalance. Review dietary intake, hydration, and consider clinician follow-up.</div>
+                    {% elif skin_unhealthy or nail_unhealthy %}
+                        <div class="alert alert-info mt-3 mb-0">One area shows abnormalities. Monitor 2–4 weeks and reinforce diet, sleep, hydration, and hygiene. Escalate if symptoms worsen.</div>
+                    {% else %}
+                        <div class="alert alert-success mt-3 mb-0">Skin and nail findings are within normal limits. Continue healthy routines and periodic monitoring.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let conversationHistory = [];
+let isRequestInFlight = false;
+
+function sendChatbotMessage() {
+    const input = document.getElementById('chatbotInput');
+    const message = input.value.trim();
+    
+    if (!message) return;
+    
+    // Add user message to chat
+    addMessage(message, 'user');
+    input.value = '';
+    setInputEnabled(false);
+    showTyping();
+    
+    // Send to backend
+    fetch('/predict/chatbot', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            message: message,
+            report_id: {{ report.id }}
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideTyping();
+        if (data.error) {
+            addMessage('Sorry, I encountered an error: ' + data.error, 'bot');
+        } else {
+            addMessage(data.response, 'bot');
+            conversationHistory = data.conversation_history || [];
+        }
+        setInputEnabled(true);
+    })
+    .catch(error => {
+        hideTyping();
+        addMessage('Sorry, I encountered an error. Please try again.', 'bot');
+        console.error('Error:', error);
+        setInputEnabled(true);
+    });
+}
+
+function sendQuickAction(element, evt) {
+    const actionText = element.textContent;
+    addMessage(actionText, 'user');
+    
+    if (isRequestInFlight) return;
+    createRipple(element, evt);
+    element.classList.add('active');
+    setInputEnabled(false);
+    showTyping();
+
+    fetch('/predict/chatbot', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            message: actionText,
+            report_id: {{ report.id }}
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideTyping();
+        if (data.error) {
+            addMessage('Sorry, I encountered an error: ' + data.error, 'bot');
+        } else {
+            addMessage(data.response, 'bot');
+            conversationHistory = data.conversation_history || [];
+        }
+        setInputEnabled(true);
+        element.classList.remove('active');
+    })
+    .catch(error => {
+        hideTyping();
+        addMessage('Sorry, I encountered an error. Please try again.', 'bot');
+        console.error('Error:', error);
+        setInputEnabled(true);
+        element.classList.remove('active');
+    });
+}
+
+function addMessage(message, sender) {
+    const messagesContainer = document.getElementById('chatbotMessages');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${sender}`;
+    const bubble = document.createElement('div');
+    bubble.className = 'content';
+    if (sender === 'bot') {
+        bubble.innerHTML = formatBotMessage(message);
+    } else {
+        bubble.textContent = message;
+    }
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    meta.textContent = new Date().toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+
+    if (sender === 'bot') {
+        const avatar = document.createElement('div');
+        avatar.className = 'avatar';
+        avatar.style.background = '#6f42c1';
+        avatar.textContent = 'AI';
+        messageDiv.appendChild(avatar);
+    }
+
+    messageDiv.appendChild(bubble);
+    messageDiv.appendChild(meta);
+    
+    messagesContainer.appendChild(messageDiv);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+function handleChatbotKeypress(event) {
+    if (event.key === 'Enter') {
+        sendChatbotMessage();
+    }
+}
+
+function showTyping() {
+    const messagesContainer = document.getElementById('chatbotMessages');
+    let typing = document.getElementById('typingIndicator');
+    if (!typing) {
+        typing = document.createElement('div');
+        typing.id = 'typingIndicator';
+        typing.className = 'typing';
+        typing.innerHTML = '<span></span><span></span><span></span>';
+        messagesContainer.appendChild(typing);
+    }
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+function hideTyping() {
+    const typing = document.getElementById('typingIndicator');
+    if (typing) typing.remove();
+}
+
+function setInputEnabled(enabled) {
+    isRequestInFlight = !enabled;
+    const input = document.getElementById('chatbotInput');
+    input.disabled = !enabled;
+    const buttons = document.querySelectorAll('.quick-action-btn');
+    buttons.forEach(b => b.disabled = !enabled);
+}
+
+function createRipple(button, evt) {
+    const rect = button.getBoundingClientRect();
+    const circle = document.createElement('span');
+    const diameter = Math.max(button.clientWidth, button.clientHeight);
+    const radius = diameter / 2;
+    circle.style.width = circle.style.height = `${diameter}px`;
+    circle.style.left = `${evt.clientX - rect.left - radius}px`;
+    circle.style.top = `${evt.clientY - rect.top - radius}px`;
+    circle.className = 'ripple-circle';
+    const existing = button.querySelector('.ripple-circle');
+    if (existing) existing.remove();
+    button.appendChild(circle);
+}
+
+function formatBotMessage(text) {
+    // Basic formatting: bold (**text**), line breaks, bullet dots to list
+    let t = text
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1<\/strong>')
+        .replace(/\n/g, '<br>');
+    // Convert lines starting with • to list items
+    const lines = t.split('<br>');
+    let inList = false;
+    const out = [];
+    for (const line of lines) {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('•')) {
+            if (!inList) { out.push('<ul class="mb-0 ps-3">'); inList = true; }
+            out.push(`<li>${trimmed.substring(1).trim()}<\/li>`);
+        } else {
+            if (inList) { out.push('<\/ul>'); inList = false; }
+            out.push(trimmed);
+        }
+    }
+    if (inList) out.push('<\/ul>');
+    return out.join('<br>');
+}
+
+// Initialize chatbot with report context
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-scroll to bottom of messages
+    const messagesContainer = document.getElementById('chatbotMessages');
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+});
+</script>
+
+
+                                    <h6 class="card-title text-success">
+
+                                        <i class="fas fa-running"></i> Lifestyle
+
+                                    </h6>
+
+                                    <p class="card-text small">
+
+                                        {{ report.lifestyle_recommendations or 'No specific lifestyle recommendations available.' }}
+
+                                    </p>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        <div class="col-12 col-md-4">
+
+                            <div class="card h-100 border-0 bg-light">
+
+                                <div class="card-body">
+
+                                    <h6 class="card-title text-info">
+
+                                        <i class="fas fa-tint"></i> Hydration
+
+                                    </h6>
+
+                                    <p class="card-text small">
+
+                                        {{ report.hydration_tips or 'No specific hydration tips available.' }}
+
+                                    </p>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    
+
+                    {% if report.professional_consultation %}
+
+                    <div class="alert alert-warning mt-3 mb-0">
+
+                        <i class="fas fa-exclamation-triangle"></i>
+
+                        <strong>Professional Consultation Recommended:</strong>
+
+                        Based on the assessment, consulting a healthcare professional is advised.
+
+                    </div>
+
+                    {% endif %}
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- Chatbot Assistant -->
+
+    <div class="row mb-4">
+
+        <div class="col-12">
+
+            <div class="card">
+
+                <div class="card-body">
+
+                    <h5 class="card-title">
+
+                        <i class="fas fa-robot text-primary"></i>
+
+                        AI Nutrition Assistant
+
+                    </h5>
+
+                    <p class="text-muted">Ask questions about the report, get explanations, and receive personalized guidance.</p>
+
+                    
+
+                    <div class="chatbot-container">
+
+                        <div class="chatbot-header">
+
+                            <h6 class="mb-0">
+
+                                <i class="fas fa-comments"></i>
+
+                                NutriScan Assistant
+
+                            </h6>
+
+                        </div>
+
+                        
+
+                        <div class="chatbot-messages" id="chatbotMessages">
+
+                            <div class="message bot">
+
+                                👋 Hello! I'm your NutriScan Assistant. I can help explain your child's nutrition report and provide personalized recommendations. What would you like to know about?
+
+                            </div>
+
+                        </div>
+
+                        
+
+                        <div class="chatbot-input">
+
+                            <div class="quick-actions mb-2" id="quickActions">
+
+                                <button class="quick-action-btn" onclick="sendQuickAction(this, event)">📄 Explain Report</button>
+
+                               <button class="quick-action-btn" onclick="sendQuickAction(this, event)">📈 BMI Details</button>
+
+                               <button class="quick-action-btn" onclick="sendQuickAction(this, event)">⚠️ Risk Assessment</button>
+
+                               <button class="quick-action-btn" onclick="sendQuickAction(this, event)">💡 Recommendations</button>
+
+                               <button class="quick-action-btn" onclick="sendQuickAction(this, event)">👨‍⚕️ When to See Doctor</button>
+
+                            </div>
+
+                            <div class="input-group">
+
+                                <input type="text" id="chatbotInput" class="form-control" placeholder="Ask me anything about the nutrition report..." onkeypress="handleChatbotKeypress(event)">
+
+                                <button class="btn btn-primary" onclick="sendChatbotMessage()">
+
+                                    <i class="fas fa-paper-plane"></i>
+
+                                </button>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- Images Section -->
+
+    <div class="row mb-4">
+
+        <div class="col-12 col-lg-6">
+
+            <div class="card h-100">
+
+                <div class="card-body">
+
+                    <h5 class="card-title">
+
+                        <i class="fas fa-image text-primary"></i>
+
+                        Skin Image Analysis
+
+                    </h5>
+
+                    {% if report.skin_image_path %}
+
+                    <img class="img-fluid rounded" src="{{ url_for('static', filename='uploads/' + report.skin_image_path) }}" alt="Skin image">
+
+                    {% else %}
+
+                    <div class="text-muted text-center py-4">
+
+                        <i class="fas fa-image fa-3x mb-3"></i>
+
+                        <p>No skin image available</p>
+
+                    </div>
+
+                    {% endif %}
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-12 col-lg-6">
+
+            <div class="card h-100">
+
+                <div class="card-body">
+
+                    <h5 class="card-title">
+
+                        <i class="fas fa-image text-primary"></i>
+
+                        Nail Image Analysis
+
+                    </h5>
+
+                    {% if report.nail_image_path %}
+
+                    <img class="img-fluid rounded" src="{{ url_for('static', filename='uploads/' + report.nail_image_path) }}" alt="Nail image">
+
+                    {% else %}
+
+                    <div class="text-muted text-center py-4">
+
+                        <i class="fas fa-image fa-3x mb-3"></i>
+
+                        <p>No nail image available</p>
+
+                    </div>
+
+                    {% endif %}
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- Digital Skin & Nail Health Analysis Report (Augmented Sheet) -->
+
+    <div class="row mb-4">
+
+        <div class="col-12">
+
+            <div class="card">
+
+                <div class="card-body">
+
+                    <h4 class="mb-3">
+
+                        <i class="fas fa-file-medical-alt text-primary"></i>
+
+                        Digital Skin & Nail Health Analysis Report
+
+                    </h4>
+
+
+
+                    <div class="row g-3 mb-3">
+
+                        <div class="col-md-3">
+
+                            <div class="small text-muted">Patient Name</div>
+
+                            <div class="fw-bold">{{ patient.child_name }}</div>
+
+                        </div>
+
+                        <div class="col-md-2">
+
+                            <div class="small text-muted">Age</div>
+
+                            <div class="fw-bold">{{ '%.1f'|format(patient.age_months/12) }} years</div>
+
+                        </div>
+
+                        <div class="col-md-2">
+
+                            <div class="small text-muted">Gender</div>
+
+                            <div class="fw-bold">{{ patient.gender|title }}</div>
+
+                        </div>
+
+                        <div class="col-md-3">
+
+                            <div class="small text-muted">Date of Report</div>
+
+                            <div class="fw-bold">{{ report.created_at.strftime('%Y-%m-%d') if report.created_at else '' }}</div>
+
+                        </div>
+
+                        <div class="col-md-2">
+
+                            <div class="small text-muted">Report ID</div>
+
+                            <div class="fw-bold">SKN-{{ '%04d' % patient.id }}-{{ '%04d' % report.id }}</div>
+
+                        </div>
+
+                    </div>
+
+
+
+                    <!-- Image Summary -->
+
+                    <h6 class="mt-3">Image Summary</h6>
+
+                    <div class="table-responsive">
+
+                        <table class="table table-sm align-middle">
+
+                            <thead>
+
+                                <tr>
+
+                                    <th>Area</th>
+
+                                    <th>Image</th>
+
+                                    <th>Notes</th>
+
+                                </tr>
+
+                            </thead>
+
+                            <tbody>
+
+                                <tr>
+
+                                    <td>Skin</td>
+
+                                    <td>
+
+                                        {% if report.skin_image_path %}
+
+                                        <img src="{{ url_for('static', filename='uploads/' + report.skin_image_path) }}" alt="Skin" style="height:60px" class="rounded border">
+
+                                        {% else %}<span class="text-muted">No image</span>{% endif %}
+
+                                    </td>
+
+                                    <td>{{ report.skin_pred|replace('_',' ')|title }} ({{ report.skin_severity or 'Normal' }})</td>
+
+                                </tr>
+
+                                <tr>
+
+                                    <td>Nail</td>
+
+                                    <td>
+
+                                        {% if report.nail_image_path %}
+
+                                        <img src="{{ url_for('static', filename='uploads/' + report.nail_image_path) }}" alt="Nail" style="height:60px" class="rounded border">
+
+                                        {% else %}<span class="text-muted">No image</span>{% endif %}
+
+                                    </td>
+
+                                    <td>{{ report.nail_pred|replace('_',' ')|title }} ({{ report.nail_severity or 'Normal' }})</td>
+
+                                </tr>
+
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+
+
+
+
+                    <!-- Findings & Interpretation -->
+
+                    <h6 class="mt-3">Findings & Interpretation</h6>
+
+                    {% set skin_unhealthy = 'unhealthy' in (report.skin_pred or '') %}
+
+                    {% set nail_unhealthy = 'unhealthy' in (report.nail_pred or '') %}
+
+                    {% set skin_conf = (report.skin_confidence or 0.5) * 100 %}
+
+                    {% set nail_conf = (report.nail_confidence or 0.5) * 100 %}
+
+                    {% set skin_sev = (report.skin_severity or 'Normal') %}
+
+                    {% set nail_sev = (report.nail_severity or 'Normal') %}
+
+                    <div class="row g-3">
+
+                        <div class="col-md-6">
+
+                            <div class="p-3 bg-light rounded h-100">
+
+                                <div class="d-flex align-items-center gap-2 mb-2">
+
+                                    <span class="badge {{ 'bg-danger' if skin_unhealthy else 'bg-success' }}">Skin: {{ report.skin_pred|replace('_',' ')|title }}</span>
+
+                                    <span class="badge bg-secondary">{{ '%.1f'|format(skin_conf) }}% conf.</span>
+
+                                    <span class="badge {{ 'bg-danger' if skin_sev=='Severe' else ('bg-warning' if skin_sev in ['Moderate','Mild'] else 'bg-success') }}">{{ skin_sev }}</span>
+
+                                </div>
+
+                                <ul class="mb-0 small">
+
+                                    {% if skin_unhealthy %}
+
+                                        <li>Texture or color patterns suggest potential nutritional or dermatologic concern.</li>
+
+                                        <li>Consider hydration optimization and review for micronutrient gaps (vitamin A/E, zinc).</li>
+
+                                        <li>If persistent for &gt;2 weeks or symptomatic (itching, pain), seek clinician review.</li>
+
+                                    {% else %}
+
+                                        <li>No suspicious lesions or dyschromia detected by the model.</li>
+
+                                        <li>Maintain sun protection and routine moisturization.</li>
+
+                                    {% endif %}
+
+                                </ul>
+
+                            </div>
+
+                        </div>
+
+                        <div class="col-md-6">
+
+                            <div class="p-3 bg-light rounded h-100">
+
+                                <div class="d-flex align-items-center gap-2 mb-2">
+
+                                    <span class="badge {{ 'bg-danger' if nail_unhealthy else 'bg-success' }}">Nails: {{ report.nail_pred|replace('_',' ')|title }}</span>
+
+                                    <span class="badge bg-secondary">{{ '%.1f'|format(nail_conf) }}% conf.</span>
+
+                                    <span class="badge {{ 'bg-danger' if nail_sev=='Severe' else ('bg-warning' if nail_sev in ['Moderate','Mild'] else 'bg-success') }}">{{ nail_sev }}</span>
+
+                                </div>
+
+                                <ul class="mb-0 small">
+
+                                    {% if nail_unhealthy %}
+
+                                        <li>Surface features may reflect iron/protein deficiency or mechanical trauma.</li>
+
+                                        <li>Check for brittleness, discoloration, or periungual swelling over the next weeks.</li>
+
+                                        <li>Discuss diet rich in iron, protein, biotin; seek care if changes progress.</li>
+
+                                    {% else %}
+
+                                        <li>Color and attachment appear within expected range.</li>
+
+                                        <li>Maintain trimming hygiene; avoid prolonged moisture exposure.</li>
+
+                                    {% endif %}
+
+                                </ul>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+
+                    {% if skin_unhealthy and nail_unhealthy %}
+
+                        <div class="alert alert-warning mt-3 mb-0">Combined skin and nail findings increase the likelihood of nutritional imbalance. Review dietary intake, hydration, and consider clinician follow-up.</div>
+
+                    {% elif skin_unhealthy or nail_unhealthy %}
+
+                        <div class="alert alert-info mt-3 mb-0">One area shows abnormalities. Monitor 2–4 weeks and reinforce diet, sleep, hydration, and hygiene. Escalate if symptoms worsen.</div>
+
+                    {% else %}
+
+                        <div class="alert alert-success mt-3 mb-0">Skin and nail findings are within normal limits. Continue healthy routines and periodic monitoring.</div>
+
+                    {% endif %}
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+<script>
+
+let conversationHistory = [];
+
+let isRequestInFlight = false;
+
+
+
+function sendChatbotMessage() {
+
+    const input = document.getElementById('chatbotInput');
+
+    const message = input.value.trim();
+
+    
+
+    if (!message) return;
+
+    
+
+    // Add user message to chat
+
+    addMessage(message, 'user');
+
+    input.value = '';
+
+    setInputEnabled(false);
+
+    showTyping();
+
+    
+
+    // Send to backend
+
+    fetch('/predict/chatbot', {
+
+        method: 'POST',
+
+        headers: {
+
+            'Content-Type': 'application/json',
+
+        },
+
+        body: JSON.stringify({
+
+            message: message,
+
+            report_id: {{ report.id }}
+
+        })
+
+    })
+
+    .then(response => response.json())
+
+    .then(data => {
+
+        hideTyping();
+
+        if (data.error) {
+
+            addMessage('Sorry, I encountered an error: ' + data.error, 'bot');
+
+        } else {
+
+            addMessage(data.response, 'bot');
+
+            conversationHistory = data.conversation_history || [];
+
+        }
+
+        setInputEnabled(true);
+
+    })
+
+    .catch(error => {
+
+        hideTyping();
+
+        addMessage('Sorry, I encountered an error. Please try again.', 'bot');
+
+        console.error('Error:', error);
+
+        setInputEnabled(true);
+
+    });
+
+}
+
+
+
+function sendQuickAction(element, evt) {
+
+    const actionText = element.textContent;
+
+    addMessage(actionText, 'user');
+
+    
+
+    if (isRequestInFlight) return;
+
+    createRipple(element, evt);
+
+    element.classList.add('active');
+
+    setInputEnabled(false);
+
+    showTyping();
+
+
+
+    fetch('/predict/chatbot', {
+
+        method: 'POST',
+
+        headers: {
+
+            'Content-Type': 'application/json',
+
+        },
+
+        body: JSON.stringify({
+
+            message: actionText,
+
+            report_id: {{ report.id }}
+
+        })
+
+    })
+
+    .then(response => response.json())
+
+    .then(data => {
+
+        hideTyping();
+
+        if (data.error) {
+
+            addMessage('Sorry, I encountered an error: ' + data.error, 'bot');
+
+        } else {
+
+            addMessage(data.response, 'bot');
+
+            conversationHistory = data.conversation_history || [];
+
+        }
+
+        setInputEnabled(true);
+
+        element.classList.remove('active');
+
+    })
+
+    .catch(error => {
+
+        hideTyping();
+
+        addMessage('Sorry, I encountered an error. Please try again.', 'bot');
+
+        console.error('Error:', error);
+
+        setInputEnabled(true);
+
+        element.classList.remove('active');
+
+    });
+
+}
+
+
+
+function addMessage(message, sender) {
+
+    const messagesContainer = document.getElementById('chatbotMessages');
+
+    const messageDiv = document.createElement('div');
+
+    messageDiv.className = `message ${sender}`;
+
+    const bubble = document.createElement('div');
+
+    bubble.className = 'content';
+
+    if (sender === 'bot') {
+
+        bubble.innerHTML = formatBotMessage(message);
+
+    } else {
+
+        bubble.textContent = message;
+
+    }
+
+    const meta = document.createElement('div');
+
+    meta.className = 'meta';
+
+    meta.textContent = new Date().toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+
+
+
+    if (sender === 'bot') {
+
+        const avatar = document.createElement('div');
+
+        avatar.className = 'avatar';
+
+        avatar.style.background = '#6f42c1';
+
+        avatar.textContent = 'AI';
+
+        messageDiv.appendChild(avatar);
+
+    }
+
+
+
+    messageDiv.appendChild(bubble);
+
+    messageDiv.appendChild(meta);
+
+    
+
+    messagesContainer.appendChild(messageDiv);
+
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+}
+
+
+
+function handleChatbotKeypress(event) {
+
+    if (event.key === 'Enter') {
+
+        sendChatbotMessage();
+
+    }
+
+}
+
+
+
+function showTyping() {
+
+    const messagesContainer = document.getElementById('chatbotMessages');
+
+    let typing = document.getElementById('typingIndicator');
+
+    if (!typing) {
+
+        typing = document.createElement('div');
+
+        typing.id = 'typingIndicator';
+
+        typing.className = 'typing';
+
+        typing.innerHTML = '<span></span><span></span><span></span>';
+
+        messagesContainer.appendChild(typing);
+
+    }
+
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+}
+
+
+
+function hideTyping() {
+
+    const typing = document.getElementById('typingIndicator');
+
+    if (typing) typing.remove();
+
+}
+
+
+
+function setInputEnabled(enabled) {
+
+    isRequestInFlight = !enabled;
+
+    const input = document.getElementById('chatbotInput');
+
+    input.disabled = !enabled;
+
+    const buttons = document.querySelectorAll('.quick-action-btn');
+
+    buttons.forEach(b => b.disabled = !enabled);
+
+}
+
+
+
+function createRipple(button, evt) {
+
+    const rect = button.getBoundingClientRect();
+
+    const circle = document.createElement('span');
+
+    const diameter = Math.max(button.clientWidth, button.clientHeight);
+
+    const radius = diameter / 2;
+
+    circle.style.width = circle.style.height = `${diameter}px`;
+
+    circle.style.left = `${evt.clientX - rect.left - radius}px`;
+
+    circle.style.top = `${evt.clientY - rect.top - radius}px`;
+
+    circle.className = 'ripple-circle';
+
+    const existing = button.querySelector('.ripple-circle');
+
+    if (existing) existing.remove();
+
+    button.appendChild(circle);
+
+}
+
+
+
+function formatBotMessage(text) {
+
+    // Basic formatting: bold (**text**), line breaks, bullet dots to list
+
+    let t = text
+
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1<\/strong>')
+
+        .replace(/\n/g, '<br>');
+
+    // Convert lines starting with • to list items
+
+    const lines = t.split('<br>');
+
+    let inList = false;
+
+    const out = [];
+
+    for (const line of lines) {
+
+        const trimmed = line.trim();
+
+        if (trimmed.startsWith('•')) {
+
+            if (!inList) { out.push('<ul class="mb-0 ps-3">'); inList = true; }
+
+            out.push(`<li>${trimmed.substring(1).trim()}<\/li>`);
+
+        } else {
+
+            if (inList) { out.push('<\/ul>'); inList = false; }
+
+            out.push(trimmed);
+
+        }
+
+    }
+
+    if (inList) out.push('<\/ul>');
+
+    return out.join('<br>');
+
+}
+
+
+
+// Initialize chatbot with report context
+
+document.addEventListener('DOMContentLoaded', function() {
+
+    // Auto-scroll to bottom of messages
+
+    const messagesContainer = document.getElementById('chatbotMessages');
+
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+});
+
+</script>
+
+{% endblock %}
+
+
